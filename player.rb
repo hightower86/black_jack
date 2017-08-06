@@ -7,5 +7,4 @@ class Player
     @cards = options[:cards]
     @name = options[:cash]
   end
-
 end
