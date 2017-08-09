@@ -1,24 +1,27 @@
 
 require_relative "player"
-require_relative "methods"
 require_relative "bank"
 require_relative "deck"
 
 class Game
-  include Methods
 
   def initialize
-    @deck = Deck.new
-    # @player = Player.new({ :name => user_name, :cards => [] })
     @dealer = Player.new({ :name => "Dealer",  :cards => [] })
     @bank = Bank.new({ :player_account => 100, :dealer_account => 100, :game_account => 0 })
+    init
   end
 
-  def start
+  def init
     puts "Сыграем в Black Jack?.. Как тебя зовут?"
     user_name = gets.chomp
     puts "Привет, #{user_name}, Погнали!"
     @player = Player.new({ :name => user_name, :cards => [] })
+  end
+
+  def start
+    @deck = Deck.new
+    @player.cards = []
+    @dealer.cards = []
     @bank.player_account -= 10
     @bank.dealer_account -= 10
     @bank.game_account += 20
@@ -30,14 +33,9 @@ class Game
     sleep 1
     @deck.mix
     give_cards(@player,2)
-    # player_cards = [] << deck.cards.slice!(0) << deck.cards.slice!(0)
-    # player_points = count_points(@player.cards)
-    # puts "Ваши карты: #{@player.cards} сумма очков по ним: #{player_points}" 
-
     give_cards(@dealer,2)
-    # dealer_points = count_points(@dealer.cards)
-    # puts "Карты дилера: #{@dealer.cards}. Сумма очков: #{dealer_points}"\
     info
+    next_step
   end
 
   def count_points(cards)
@@ -64,19 +62,30 @@ class Game
     player_points = count_points(@player.cards)
     puts "Карты дилера: #{@dealer.cards}. Сумма очков: #{dealer_points}"
     puts "Ваши карты: #{@player.cards}. Cумма очков: #{player_points}" 
-    if dealer_points > player_points
+    if (dealer_points <= 21 && dealer_points > player_points) || player_points > 21 
       puts "К сожалению, Вы проиграли :((("
-    elsif dealer_points < player_points
+      @bank.dealer_account += @bank.game_account
+      @bank.game_account -= @bank.game_account
+    elsif  player_points <= 21 && dealer_points < player_points || dealer_points > 21
       puts "Поздравляем! ВЫ победили!!!"
-    else
+      @bank.player_account += @bank.game_account
+      @bank.game_account -= @bank.game_account
+    elsif player_points == dealer_points || (player_points > 21 && dealer_points > 21)
       puts "На этот раз победила ДРУЖБА!!!"
+    end
+    puts "Хотите сыграть еще раз? Y/N"
+    if gets.chomp == "Y"
+      start
+    else
+      abort "До встречи!"
     end
   end
 
   def info
-    puts "Карты дилера: #{@dealer.cards.each {|c| print "* "}}." 
-          # "Сумма очков: #{count_points(@dealer.cards)}"
-    puts "Ваши карты: #{@player.cards} сумма очков: #{count_points(@player.cards)}" 
+    str = ""
+    @dealer.cards.each {str += "*"} 
+    puts "Карты дилера: #{str}"
+    puts "Ваши карты: #{@player.cards} сумма очков: #{count_points(@player.cards)}"
   end
 
   def give_cards(player, count)
@@ -88,18 +97,28 @@ class Game
 
   def dealer_move
     puts "Ход дилера..."
-    sleep 2
+    sleep 1
     dealer_points = count_points(@dealer.cards)
-    if dealer_points < 18 && @dealer.cards.size < 3
+    if dealer_points < 16 && @dealer.cards.size < 3
       give_cards(@dealer,1)
+      puts "Дилер взял карту..."
+      info
+      sleep 1
+      next_step if check
+    else 
+      puts "Дилер пропустил ход..."
+      sleep 1
+      next_step
     end
-    check
-    next_step
     info
   end
+
   def check
-    if @dealer.cards.size == 3 && @player.cards.size == 3
+    if @dealer.cards.size >= 3 && @player.cards.size >= 3
+      false
       open_cards
+    else
+      true  
     end
   end
 
@@ -116,9 +135,11 @@ class Game
       if @player.cards.size < 3
         give_cards(@player,1)
       end
+      puts "Вы взяли карту..."
+      sleep 1
+      info
       check
       dealer_move
-      info
     when 3
       open_cards
     end
@@ -127,4 +148,4 @@ end
 
 game = Game.new
 game.start
-game.next_step
+# game.next_step
